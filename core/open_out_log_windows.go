@@ -21,13 +21,4 @@ var (
 	procSetStdHandle = kernel32.MustFindProc("SetStdHandle")
 )
 
-func internalDup2(oldfd uintptr, newfd uintptr) error {
-	r0, _, e1 := syscall.Syscall(procSetStdHandle.Addr(), 2, oldfd, newfd, 0)
-	if r0 == 0 {
-		if e1 != 0 {
-			return error(e1)
-		}
-		return syscall.EINVAL
-	}
-	return nil
-}
+func internalDup2(oldfd uintptr, newfd uintptr) error { _ = "STUB: not implemented"; return nil }

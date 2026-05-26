@@ -10,11 +10,7 @@
 package evaluator
 
 import (
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
-
 	"github.com/linkedin/Burrow/core/internal/storage"
-	"github.com/linkedin/Burrow/core/protocol"
 )
 
 // StorageAndEvaluatorCoordinatorsWithOffsets sets up a Coordinator with a single caching module defined. In order to do
@@ -22,19 +18,6 @@ import (
 // cluster and group. This func should never be called in normal code. It is only provided to facilitate testing by
 // other subsystems.
 func StorageAndEvaluatorCoordinatorsWithOffsets() (*Coordinator, *storage.Coordinator) {
-	storageCoordinator := storage.CoordinatorWithOffsets()
-
-	evaluatorCoordinator := Coordinator{
-		Log: zap.NewNop(),
-	}
-	evaluatorCoordinator.App = storageCoordinator.App
-	evaluatorCoordinator.App.EvaluatorChannel = make(chan *protocol.EvaluatorRequest)
-
-	viper.Set("evaluator.test.class-name", "caching")
-	viper.Set("evaluator.test.expire-cache", 30)
-
-	evaluatorCoordinator.Configure()
-	evaluatorCoordinator.Start()
-
-	return &evaluatorCoordinator, storageCoordinator
+	_ = "STUB: not implemented"
+	return nil, nil
 }

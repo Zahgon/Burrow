@@ -26,23 +26,17 @@ import (
 // StartCoordinatorModules is a helper func for coordinators to start a list of modules. Given a map of protocol.Module,
 // it calls the Start func on each one. If any module returns an error, it immediately stops and returns that error
 func StartCoordinatorModules(modules map[string]protocol.Module) error {
+	_ = "STUB: not implemented"
 	// Start all the modules, returning an error if any fail to start
-	for _, module := range modules {
-		err := module.Start()
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
 // StopCoordinatorModules is a helper func for coordinators to stop a list of modules. Given a map of protocol.Module,
 // it calls the Stop func on each one. Any errors that are returned are ignored.
 func StopCoordinatorModules(modules map[string]protocol.Module) {
+	_ = "STUB: not implemented"
 	// Stop all the modules passed in
-	for _, module := range modules {
-		module.Stop()
-	}
+	return
 }
 
 // MockModule is a mock of protocol.Module that also satisfies the various subsystem Module variants, and is used in
@@ -52,53 +46,34 @@ type MockModule struct {
 }
 
 // Configure mocks the protocol.Module Configure func
-func (m *MockModule) Configure(name, configRoot string) {
-	m.Called(name, configRoot)
-}
+func (m *MockModule) Configure(name, configRoot string) { _ = "STUB: not implemented"; return }
 
 // Start mocks the protocol.Module Start func
-func (m *MockModule) Start() error {
-	args := m.Called()
-	return args.Error(0)
-}
+func (m *MockModule) Start() error { _ = "STUB: not implemented"; return nil }
 
 // Stop mocks the protocol.Module Stop func
-func (m *MockModule) Stop() error {
-	args := m.Called()
-	return args.Error(0)
-}
+func (m *MockModule) Stop() error { _ = "STUB: not implemented"; return nil }
 
 // GetName mocks the notifier.Module GetName func
-func (m *MockModule) GetName() string {
-	args := m.Called()
-	return args.String(0)
-}
+func (m *MockModule) GetName() string { _ = "STUB: not implemented"; return "" }
 
 // GetGroupAllowlist mocks the notifier.Module GetGroupAllowlist func
-func (m *MockModule) GetGroupAllowlist() *regexp.Regexp {
-	args := m.Called()
-	return args.Get(0).(*regexp.Regexp)
-}
+func (m *MockModule) GetGroupAllowlist() *regexp.Regexp { _ = "STUB: not implemented"; return nil }
 
 // GetGroupDenylist mocks the notifier.Module GetGroupDenylist func
-func (m *MockModule) GetGroupDenylist() *regexp.Regexp {
-	args := m.Called()
-	return args.Get(0).(*regexp.Regexp)
-}
+func (m *MockModule) GetGroupDenylist() *regexp.Regexp { _ = "STUB: not implemented"; return nil }
 
 // GetLogger mocks the notifier.Module GetLogger func
-func (m *MockModule) GetLogger() *zap.Logger {
-	args := m.Called()
-	return args.Get(0).(*zap.Logger)
-}
+func (m *MockModule) GetLogger() *zap.Logger { _ = "STUB: not implemented"; return nil }
 
 // AcceptConsumerGroup mocks the notifier.Module AcceptConsumerGroup func
 func (m *MockModule) AcceptConsumerGroup(status *protocol.ConsumerGroupStatus) bool {
-	args := m.Called(status)
-	return args.Bool(0)
+	_ = "STUB: not implemented"
+	return false
 }
 
 // Notify mocks the notifier.Module Notify func
 func (m *MockModule) Notify(status *protocol.ConsumerGroupStatus, eventID string, startTime time.Time, stateGood bool) {
-	m.Called(status, eventID, startTime, stateGood)
+	_ = "STUB: not implemented"
+	return
 }

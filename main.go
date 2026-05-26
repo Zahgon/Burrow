@@ -38,7 +38,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/spf13/viper"
 	_ "go.uber.org/automaxprocs"
@@ -49,20 +48,9 @@ import (
 // exitCode wraps a return value for the application
 type exitCode struct{ Code int }
 
-func handleExit() {
-	if e := recover(); e != nil {
-		if exit, ok := e.(exitCode); ok {
-			if exit.Code != 0 {
-				fmt.Fprintln(os.Stderr, "Burrow failed at", time.Now().Format("January 2, 2006 at 3:04pm (MST)"))
-			} else {
-				fmt.Fprintln(os.Stderr, "Stopped Burrow at", time.Now().Format("January 2, 2006 at 3:04pm (MST)"))
-			}
+func handleExit() { _ = "STUB: not implemented"; return }
 
-			os.Exit(exit.Code)
-		}
-		panic(e) // not an exitCode, bubble up
-	}
-}
+// not an exitCode, bubble up
 
 func main() {
 	// This makes sure that we panic and run defers correctly

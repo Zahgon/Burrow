@@ -10,12 +10,9 @@
 package evaluator
 
 import (
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/karrick/goswarm"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
 	"github.com/linkedin/Burrow/core/protocol"
@@ -48,330 +45,119 @@ type cacheError struct {
 }
 
 func (e *cacheError) Error() string {
-	return e.Reason
+	_ = "STUB: not implemented"
+
+	// Configure validates the configuration for the module, creates a channel to receive requests on, and sets up the
+	// cache. If no expiration time for cache entries is set, a default value of 10 seconds is used. If there is any problem
+	// starting the goswarm cache, this func panics.
+	return ""
 }
 
-// Configure validates the configuration for the module, creates a channel to receive requests on, and sets up the
-// cache. If no expiration time for cache entries is set, a default value of 10 seconds is used. If there is any problem
-// starting the goswarm cache, this func panics.
 func (module *CachingEvaluator) Configure(name, configRoot string) {
-	module.Log.Info("configuring")
-
-	module.name = name
-	module.RequestChannel = make(chan *protocol.EvaluatorRequest)
-	module.running = sync.WaitGroup{}
-
-	// Set defaults for configs if needed
-	viper.SetDefault(configRoot+".expire-cache", 10)
-	viper.SetDefault(configRoot+".allowed-lag", 0)
-	module.expireCache = viper.GetInt(configRoot + ".expire-cache")
-	module.minimumComplete = float32(viper.GetFloat64(configRoot + ".minimum-complete"))
-	module.allowedLag = viper.GetUint64(configRoot + ".allowed-lag")
-	cacheExpire := time.Duration(module.expireCache) * time.Second
-
-	newCache, err := goswarm.NewSimple(&goswarm.Config{
-		GoodExpiryDuration: cacheExpire,
-		BadExpiryDuration:  cacheExpire,
-		Lookup:             module.evaluateConsumerStatus,
-	})
-	if err != nil {
-		module.Log.Panic("Failed to start cache")
-		panic(err)
-	}
-	module.cache = newCache
+	_ = "STUB: not implemented"
+	return
 }
+
+// Set defaults for configs if needed
 
 // GetCommunicationChannel returns the RequestChannel that has been setup for this module.
 func (module *CachingEvaluator) GetCommunicationChannel() chan *protocol.EvaluatorRequest {
-	return module.RequestChannel
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // Start instantiates the main loop that listens for evaluation requests and returns the result
-func (module *CachingEvaluator) Start() error {
-	module.Log.Info("starting")
-
-	module.running.Add(1)
-	go module.mainLoop()
-	return nil
-}
+func (module *CachingEvaluator) Start() error { _ = "STUB: not implemented"; return nil }
 
 // Stop closes the module's RequestChannel, which also terminates the main loop that responds to requests
-func (module *CachingEvaluator) Stop() error {
-	module.Log.Info("stopping")
+func (module *CachingEvaluator) Stop() error { _ = "STUB: not implemented"; return nil }
 
-	close(module.RequestChannel)
-	module.running.Wait()
+func (module *CachingEvaluator) mainLoop() { _ = "STUB: not implemented"; return }
+
+func (module *CachingEvaluator) getConsumerStatus(request *protocol.EvaluatorRequest) {
+	_ = "STUB: not implemented"
+	// Easier to set up the structured logger once for the request
+	return
+}
+
+// We're just returning all errors as a 404 here
+
+// The requestor only wants partitions that are not StatusOK, so we need to filter the result before
+// returning it. However, we can't modify the original, so we need to make a new copy
+
+// Copy over any partitions that do not have the status StatusOK
+
+func (module *CachingEvaluator) evaluateConsumerStatus(clusterAndConsumer string) (interface{}, error) {
+	_ = "STUB: not implemented"
+	// First off, we need to separate the cluster and consumer values from the string provided
+	return nil, nil
+}
+
+// Fetch all the consumer offset and lag information from storage
+
+// Either the cluster or the consumer doesn't exist. In either case, return an error
+
+// From here out, we're going to return a non-error response, so prepare a status struct
+
+// Count up the number of partitions for this consumer first, so we can size our slice correctly
+
+// If the partition status is greater than StatusError, we just mark it as StatusError
+
+// Calculate completeness as a percentage of the number of partitions that are complete
+
+func evaluatePartitionStatus(partition *protocol.ConsumerPartition, minimumComplete float32, allowedLag uint64) *protocol.PartitionStatus {
+	_ = "STUB: not implemented"
 	return nil
 }
 
-func (module *CachingEvaluator) mainLoop() {
-	defer module.running.Done()
+// If there are no offsets, we can't do anything
 
-	for request := range module.RequestChannel {
-		if request != nil {
-			go module.getConsumerStatus(request)
-		}
-	}
-}
+// Slice the offsets to remove all nil entries (they'll be at the start)
 
-func (module *CachingEvaluator) getConsumerStatus(request *protocol.EvaluatorRequest) {
-	// Easier to set up the structured logger once for the request
-	requestLogger := module.Log.With(
-		zap.String("cluster", request.Cluster),
-		zap.String("consumer", request.Group),
-		zap.Bool("showall", request.ShowAll),
-	)
+// Check if we had any nil offsets, and mark the partition as incomplete
 
-	result, err := module.cache.Query(request.Cluster + " " + request.Group)
-	if err != nil {
-		requestLogger.Info(err.Error())
+// If there are no offsets left, just return an OK result as is - we can't determine anything more
 
-		// We're just returning all errors as a 404 here
-		request.Reply <- &protocol.ConsumerGroupStatus{
-			Cluster:    request.Cluster,
-			Group:      request.Group,
-			Status:     protocol.StatusNotFound,
-			Complete:   1.0,
-			Partitions: make([]*protocol.PartitionStatus, 0),
-			Maxlag:     nil,
-			TotalLag:   0,
-		}
-	} else {
-		status := result.(*protocol.ConsumerGroupStatus)
-
-		if !request.ShowAll {
-			// The requestor only wants partitions that are not StatusOK, so we need to filter the result before
-			// returning it. However, we can't modify the original, so we need to make a new copy
-			cachedStatus := status
-			status = &protocol.ConsumerGroupStatus{
-				Cluster:         cachedStatus.Cluster,
-				Group:           cachedStatus.Group,
-				Status:          cachedStatus.Status,
-				Complete:        cachedStatus.Complete,
-				Maxlag:          cachedStatus.Maxlag,
-				TotalLag:        cachedStatus.TotalLag,
-				TotalPartitions: cachedStatus.TotalPartitions,
-				Partitions:      make([]*protocol.PartitionStatus, cachedStatus.TotalPartitions),
-			}
-
-			// Copy over any partitions that do not have the status StatusOK
-			count := 0
-			for _, partition := range cachedStatus.Partitions {
-				if partition.Status > protocol.StatusOK {
-					status.Partitions[count] = partition
-					count++
-				}
-			}
-			status.Partitions = status.Partitions[0:count]
-		}
-
-		requestLogger.Debug("ok")
-		request.Reply <- status
-	}
-}
-
-func (module *CachingEvaluator) evaluateConsumerStatus(clusterAndConsumer string) (interface{}, error) {
-	// First off, we need to separate the cluster and consumer values from the string provided
-	parts := strings.SplitN(clusterAndConsumer, " ", 2)
-	if len(parts) != 2 {
-		module.Log.Error("query with bad clusterAndConsumer", zap.String("arg", clusterAndConsumer))
-		return nil, &cacheError{StatusCode: 500, Reason: "bad request"}
-	}
-	cluster := parts[0]
-	consumer := parts[1]
-
-	// Fetch all the consumer offset and lag information from storage
-	storageRequest := &protocol.StorageRequest{
-		RequestType: protocol.StorageFetchConsumer,
-		Cluster:     cluster,
-		Group:       consumer,
-		Reply:       make(chan interface{}),
-	}
-	module.App.StorageChannel <- storageRequest
-	response := <-storageRequest.Reply
-
-	if response == nil {
-		// Either the cluster or the consumer doesn't exist. In either case, return an error
-		module.Log.Debug("evaluation result",
-			zap.String("cluster", cluster),
-			zap.String("consumer", consumer),
-			zap.String("status", protocol.StatusNotFound.String()),
-		)
-		return nil, &cacheError{StatusCode: 404, Reason: "cluster or consumer not found"}
-	}
-
-	// From here out, we're going to return a non-error response, so prepare a status struct
-	status := &protocol.ConsumerGroupStatus{
-		Cluster:         cluster,
-		Group:           consumer,
-		Status:          protocol.StatusOK,
-		Complete:        1.0,
-		Maxlag:          nil,
-		TotalLag:        0,
-		TotalPartitions: 0,
-	}
-
-	// Count up the number of partitions for this consumer first, so we can size our slice correctly
-	topics := response.(protocol.ConsumerTopics)
-	for _, partitions := range topics {
-		for _, partition := range partitions {
-			status.TotalPartitions++
-			status.TotalLag += partition.CurrentLag
-		}
-	}
-	status.Partitions = make([]*protocol.PartitionStatus, status.TotalPartitions)
-
-	count := 0
-	completePartitions := 0
-	for topic, partitions := range topics {
-		for partitionID, partition := range partitions {
-			partitionStatus := evaluatePartitionStatus(partition, module.minimumComplete, module.allowedLag)
-			partitionStatus.Topic = topic
-			partitionStatus.Partition = int32(partitionID)
-			partitionStatus.Owner = partition.Owner
-			partitionStatus.ClientID = partition.ClientID
-
-			if partitionStatus.Status > status.Status {
-				// If the partition status is greater than StatusError, we just mark it as StatusError
-				if partitionStatus.Status > protocol.StatusError {
-					status.Status = protocol.StatusError
-				} else {
-					status.Status = partitionStatus.Status
-				}
-			}
-
-			if (status.Maxlag == nil) || (partitionStatus.CurrentLag > status.Maxlag.CurrentLag) {
-				status.Maxlag = partitionStatus
-			}
-			if partitionStatus.Complete == 1.0 {
-				completePartitions++
-			}
-			status.Partitions[count] = partitionStatus
-			count++
-		}
-	}
-
-	// Calculate completeness as a percentage of the number of partitions that are complete
-	if status.TotalPartitions > 0 {
-		status.Complete = float32(completePartitions) / float32(status.TotalPartitions)
-	} else {
-		status.Complete = 0
-	}
-
-	module.Log.Debug("evaluation result",
-		zap.String("cluster", cluster),
-		zap.String("consumer", consumer),
-		zap.String("status", status.Status.String()),
-		zap.Float32("complete", status.Complete),
-		zap.Uint64("total_lag", status.TotalLag),
-		zap.Int("total_partitions", status.TotalPartitions),
-	)
-	return status, nil
-}
-
-func evaluatePartitionStatus(partition *protocol.ConsumerPartition, minimumComplete float32, allowedLag uint64) *protocol.PartitionStatus {
-	status := &protocol.PartitionStatus{
-		Status:     protocol.StatusOK,
-		CurrentLag: partition.CurrentLag,
-	}
-
-	// If there are no offsets, we can't do anything
-	if len(partition.Offsets) == 0 {
-		return status
-	}
-
-	// Slice the offsets to remove all nil entries (they'll be at the start)
-	firstOffset := len(partition.Offsets) - 1
-	for i, offset := range partition.Offsets {
-		if offset != nil {
-			firstOffset = i
-			break
-		}
-	}
-	offsets := partition.Offsets[firstOffset:]
-
-	// Check if we had any nil offsets, and mark the partition as incomplete
-	if len(offsets) < len(partition.Offsets) {
-		status.Complete = float32(len(offsets)) / float32(len(partition.Offsets))
-	} else {
-		status.Complete = 1.0
-	}
-
-	// If there are no offsets left, just return an OK result as is - we can't determine anything more
-	if len(offsets) == 0 {
-		return status
-	}
-	status.Start = offsets[0]
-	status.End = offsets[len(offsets)-1]
-
-	// If the partition does not meet the completeness threshold, just return it as OK
-	if status.Complete >= minimumComplete {
-		status.Status = calculatePartitionStatus(offsets, partition.BrokerOffsets, partition.CurrentLag, time.Now().Unix(), allowedLag)
-	}
-
-	return status
-}
+// If the partition does not meet the completeness threshold, just return it as OK
 
 func calculatePartitionStatus(offsets []*protocol.ConsumerOffset, brokerOffsets []int64, currentLag uint64, timeNow int64, allowedLag uint64) protocol.StatusConstant {
+	_ = "STUB: not implemented"
 	// If the current lag is zero, the partition is never in error
-	if currentLag > allowedLag {
-		// Check if the partition is stopped first, as this is a problem even if the consumer had zero lag at some
-		// point in its commit history (as the commit history could be very old). However, if the recent broker offsets
-		// for this partition show that the consumer had zero lag recently ("intervals * offset-refresh" should be on
-		// the order of minutes), don't consider it stopped yet.
-		if checkIfOffsetsStopped(offsets, timeNow) && (!checkIfRecentLagZero(offsets, brokerOffsets)) {
-			return protocol.StatusStop
-		}
-
-		// Its possible the consumer had a rewind in the interval, though it has some lag currently.
-		// We only count a rewind state against the consumer for as long as it it rewinds (and recovery) occurs. For
-		// example, the rewind could have been just a few offsets and then consumer could be back to the same offset it
-		// was committing before (this can occur with rebalances where consumers don't throw away work they are
-		// currently  doing and can commit an old offset), so don't hold that against the consumer.
-		//
-		// This has to go above the isLagAlwaysNotZero check because often a consumer will have no lag and then
-		// suddenly rewind to earliest (broker bugs are common cause of this). So there will be zero lag in part of the
-		// consumer history (so marked OK) and then when that ages out we just have the positive progress as the
-		// consumer works through the lag (again, being marked OK).
-		rewindIndex := checkIfOffsetsRewind(offsets)
-		if rewindIndex > 0 && !checkIfRewindRecovered(offsets, rewindIndex) {
-			return protocol.StatusRewind
-		}
-
-		// Now check if the lag was zero at any point, and skip the rest of the checks if this is true
-		if isLagAlwaysNotZero(offsets, allowedLag) {
-			// Check for errors, in order of severity starting with the worst. If any check comes back true, skip the rest
-			if checkIfOffsetsStalled(offsets) {
-				return protocol.StatusStall
-			}
-			if checkIfLagNotDecreasing(offsets) {
-				return protocol.StatusWarning
-			}
-		}
-	}
-	return protocol.StatusOK
+	return *new(protocol.StatusConstant)
 }
+
+// Check if the partition is stopped first, as this is a problem even if the consumer had zero lag at some
+// point in its commit history (as the commit history could be very old). However, if the recent broker offsets
+// for this partition show that the consumer had zero lag recently ("intervals * offset-refresh" should be on
+// the order of minutes), don't consider it stopped yet.
+
+// Its possible the consumer had a rewind in the interval, though it has some lag currently.
+// We only count a rewind state against the consumer for as long as it it rewinds (and recovery) occurs. For
+// example, the rewind could have been just a few offsets and then consumer could be back to the same offset it
+// was committing before (this can occur with rebalances where consumers don't throw away work they are
+// currently  doing and can commit an old offset), so don't hold that against the consumer.
+//
+// This has to go above the isLagAlwaysNotZero check because often a consumer will have no lag and then
+// suddenly rewind to earliest (broker bugs are common cause of this). So there will be zero lag in part of the
+// consumer history (so marked OK) and then when that ages out we just have the positive progress as the
+// consumer works through the lag (again, being marked OK).
+
+// Now check if the lag was zero at any point, and skip the rest of the checks if this is true
+
+// Check for errors, in order of severity starting with the worst. If any check comes back true, skip the rest
 
 // Rule 1 - If over the stored period, the lag is ever zero for the partition, the period is OK
 func isLagAlwaysNotZero(offsets []*protocol.ConsumerOffset, allowedLag uint64) bool {
-	for _, offset := range offsets {
-		if offset.Lag != nil && offset.Lag.Value <= allowedLag {
-			return false
-		}
-	}
-	return true
+	_ = "STUB: not implemented"
+	return false
 }
 
 // Rule 2 - Get the index of of the offset when the consumer offset decreases from one interval to the next.
 //
 //	-1 otherwise, indicating no rewind was found
 func checkIfOffsetsRewind(offsets []*protocol.ConsumerOffset) int {
-	for i := 1; i < len(offsets); i++ {
-		if offsets[i].Offset < offsets[i-1].Offset {
-			return i
-		}
-	}
-	return -1
+	_ = "STUB: not implemented"
+	return 0
 }
 
 // Rule 2 (part 2) - Its assumed the consumer had a rewind, check to see if the consumer reached the previous offset
@@ -379,12 +165,7 @@ func checkIfOffsetsRewind(offsets []*protocol.ConsumerOffset) int {
 //	from the rewind, indicating that it had recovered to the previous point and we can check the rest
 //	of the lag rules for the partition.
 func checkIfRewindRecovered(offsets []*protocol.ConsumerOffset, resetIndex int) bool {
-	previousProgress := offsets[resetIndex-1]
-	for i := resetIndex; i < len(offsets); i++ {
-		if offsets[i].Offset >= previousProgress.Offset {
-			return true
-		}
-	}
+	_ = "STUB: not implemented"
 	return false
 }
 
@@ -392,47 +173,28 @@ func checkIfRewindRecovered(offsets []*protocol.ConsumerOffset, resetIndex int) 
 //
 //	and first offset timestamps, the consumer has stopped committing offsets for that partition (error)
 func checkIfOffsetsStopped(offsets []*protocol.ConsumerOffset, timeNow int64) bool {
-	firstTimestamp := offsets[0].Timestamp
-	lastTimestamp := offsets[len(offsets)-1].Timestamp
-	return ((timeNow * 1000) - lastTimestamp) > (lastTimestamp - firstTimestamp)
+	_ = "STUB: not implemented"
+	return false
 }
 
 // Rule 4 - If the consumer is committing offsets that do not change, it's an error (partition is stalled)
 //
 //	NOTE - we already checked for zero lag in Rule 1, so we know that there is currently lag for this partition
 func checkIfOffsetsStalled(offsets []*protocol.ConsumerOffset) bool {
-	for i := 1; i < len(offsets); i++ {
-		if offsets[i].Offset != offsets[i-1].Offset {
-			return false
-		}
-	}
-	return true
+	_ = "STUB: not implemented"
+	return false
 }
 
 // Rule 5 - If the consumer offsets are advancing, but the lag is not decreasing somewhere, it's a warning (consumer is slow)
 func checkIfLagNotDecreasing(offsets []*protocol.ConsumerOffset) bool {
-	var lastLag *protocol.Lag
-	for i := 0; i < len(offsets); i++ {
-		lag := offsets[i].Lag
-		if lag != nil {
-			if lastLag != nil && lag.Value < lastLag.Value {
-				return false
-			}
-			lastLag = lag
-		}
-	}
-	return true
+	_ = "STUB: not implemented"
+	return false
 }
 
 // Using the most recent committed offset, return true if there was zero lag at some point in the stored broker
 // LEO offsets. This has the effect of returning true if the consumer was up to date on this partition in recent
 // (minutes) history, so it can be used to delay alerting for a short period of time.
 func checkIfRecentLagZero(offsets []*protocol.ConsumerOffset, brokerOffsets []int64) bool {
-	lastOffset := offsets[len(offsets)-1].Offset
-	for i := 0; i < len(brokerOffsets); i++ {
-		if brokerOffsets[i] <= lastOffset {
-			return true
-		}
-	}
+	_ = "STUB: not implemented"
 	return false
 }

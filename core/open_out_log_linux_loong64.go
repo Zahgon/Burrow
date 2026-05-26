@@ -12,12 +12,6 @@
 
 package core
 
-import (
-	"syscall"
-)
-
 // linux_loong64 doesn't have syscall.Dup2, so use
 // the nearly identical syscall.Dup3 instead
-func internalDup2(oldfd uintptr, newfd uintptr) error {
-	return syscall.Dup3(int(oldfd), int(newfd), 0)
-}
+func internalDup2(oldfd uintptr, newfd uintptr) error { _ = "STUB: not implemented"; return nil }

@@ -9,8 +9,6 @@
 
 package protocol
 
-import "encoding/json"
-
 // EvaluatorRequest is sent over the EvaluatorChannel that is stored in the application context. It is a query for the
 // status of a group in a cluster. The response to this query is sent over the reply channel. This request is typically
 // used in the HTTP server and notifier subsystems.
@@ -135,20 +133,11 @@ const (
 var statusStrings = [...]string{"NOTFOUND", "OK", "WARN", "ERR", "STOP", "STALL", "REWIND"}
 
 // String returns a string representation of a StatusConstant
-func (c StatusConstant) String() string {
-	if (c >= 0) && (c < StatusConstant(len(statusStrings))) {
-		return statusStrings[c]
-	}
-	return "UNKNOWN"
-}
+func (c StatusConstant) String() string { _ = "STUB: not implemented"; return "" }
 
 // MarshalText implements the encoding.TextMarshaler interface. The status is the string representation of
 // StatusConstant
-func (c StatusConstant) MarshalText() ([]byte, error) {
-	return []byte(c.String()), nil
-}
+func (c StatusConstant) MarshalText() ([]byte, error) { _ = "STUB: not implemented"; return nil, nil }
 
 // MarshalJSON implements the json.Marshaler interface. The status is the string representation of StatusConstant
-func (c StatusConstant) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.String())
-}
+func (c StatusConstant) MarshalJSON() ([]byte, error) { _ = "STUB: not implemented"; return nil, nil }

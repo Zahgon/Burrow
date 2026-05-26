@@ -17,19 +17,13 @@ type XDGSCRAMClient struct {
 }
 
 func (x *XDGSCRAMClient) Begin(userName, password, authzID string) (err error) {
-	x.Client, err = x.HashGeneratorFcn.NewClient(userName, password, authzID)
-	if err != nil {
-		return err
-	}
-	x.ClientConversation = x.Client.NewConversation()
+	_ = "STUB: not implemented"
 	return nil
 }
 
 func (x *XDGSCRAMClient) Step(challenge string) (response string, err error) {
-	response, err = x.ClientConversation.Step(challenge)
-	return
+	_ = "STUB: not implemented"
+	return "", nil
 }
 
-func (x *XDGSCRAMClient) Done() bool {
-	return x.ClientConversation.Done()
-}
+func (x *XDGSCRAMClient) Done() bool { _ = "STUB: not implemented"; return false }

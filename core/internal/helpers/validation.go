@@ -9,19 +9,8 @@
 
 package helpers
 
-import (
-	"net"
-	"net/url"
-	"regexp"
-	"strconv"
-	"strings"
-)
-
 // ValidateIP returns true if the provided string can be parsed as an IP address (either IPv4 or IPv6).
-func ValidateIP(ipaddr string) bool {
-	addr := net.ParseIP(ipaddr)
-	return addr != nil
-}
+func ValidateIP(ipaddr string) bool { _ = "STUB: not implemented"; return false }
 
 // ValidateHostname returns true if the provided string can be parsed as a hostname. In general this means:
 //
@@ -31,121 +20,49 @@ func ValidateIP(ipaddr string) bool {
 // * Segments may not start or end with a dash
 // * The exception is IPv6 addresses, which are also permitted.
 // * An underscore is allowed to support Docker Swarm service names.
-func ValidateHostname(hostname string) bool {
-	matches, _ := regexp.MatchString(`^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*\.?$`, hostname)
+func ValidateHostname(hostname string) bool { _ = "STUB: not implemented"; return false }
 
-	if !matches {
-		// Try Docker Swarm service name
-		matchesDocker, _ := regexp.MatchString(`^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])\_([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])$`, hostname)
-		if !matchesDocker {
-			// Try as an IP address
-			return ValidateIP(hostname)
-		}
-		return true
-	}
+// Try Docker Swarm service name
 
-	return matches
-}
+// Try as an IP address
 
 // ValidateZookeeperPath returns true if the provided string can be parsed as a Zookeeper node path. This means that it
 // starts with a forward slash, and contains one or more segments that are separated by slashes (but does not end with
 // a slash).
-func ValidateZookeeperPath(path string) bool {
-	parts := strings.Split(path, "/")
-	if (len(parts) < 2) || (parts[0] != "") {
-		return false
-	}
-	if (len(parts) == 2) && (parts[1] == "") {
-		// Root node is OK
-		return true
-	}
+func ValidateZookeeperPath(path string) bool { _ = "STUB: not implemented"; return false }
 
-	nodeRegexp := regexp.MustCompile(`^[a-zA-Z0-9_\-][a-zA-Z0-9_\-.]*$`)
-	for i, node := range parts {
-		if i == 0 {
-			continue
-		}
-		if !nodeRegexp.MatchString(node) {
-			return false
-		}
-	}
-	return true
-}
+// Root node is OK
 
 // ValidateTopic returns true if the provided string is a valid topic name, which may only contain letters, numbers,
 // underscores, dashes, and periods.
-func ValidateTopic(topic string) bool {
-	matches, _ := regexp.MatchString(`^[a-zA-Z0-9_.-]+$`, topic)
-	return matches
-}
+func ValidateTopic(topic string) bool { _ = "STUB: not implemented"; return false }
 
 // ValidateFilename returns true if the provided string is a sane-looking filename (not just a valid filename, which
 // could be almost anything). Right now, this is defined to be the same thing as ValidateTopic.
-func ValidateFilename(filename string) bool {
-	return ValidateTopic(filename)
-}
+func ValidateFilename(filename string) bool { _ = "STUB: not implemented"; return false }
 
 // ValidateEmail returns true if the provided string is an email address. This is a very simplistic validator - the
 // string must be of the form (something)@(something).(something)
-func ValidateEmail(email string) bool {
-	matches, _ := regexp.MatchString(`^.+@.+\..+$`, email)
-	return matches
-}
+func ValidateEmail(email string) bool { _ = "STUB: not implemented"; return false }
 
 // ValidateURL returns true if the provided string can be parsed as a URL. We use the net/url Parse func for this.
-func ValidateURL(rawURL string) bool {
-	_, err := url.Parse(rawURL)
-	return err == nil
-}
+func ValidateURL(rawURL string) bool { _ = "STUB: not implemented"; return false }
 
 // ValidateHostList returns true if the provided slice of strings can all be parsed by ValidateHostPort
-func ValidateHostList(hosts []string) bool {
-	for _, host := range hosts {
-		if !ValidateHostPort(host, false) {
-			return false
-		}
-	}
-
-	return true
-}
+func ValidateHostList(hosts []string) bool { _ = "STUB: not implemented"; return false }
 
 // ValidateHostPort returns true if the provided string is of the form "hostname:port", where hostname is a valid
 // hostname or IP address (as parsed by ValidateIP or ValidateHostname), and port is a valid integer.
 func ValidateHostPort(host string, allowBlankHost bool) bool {
+	_ = "STUB: not implemented"
 	// Must be hostname:port, ipv4:port, or [ipv6]:port. Optionally allow blank hostname
-	hostname, portString, err := net.SplitHostPort(host)
-	if err != nil {
-		return false
-	}
-
-	// Validate the port is a numeric (yeah, strings are valid in some places, but we don't support it)
-	_, err = strconv.Atoi(portString)
-	if err != nil {
-		return false
-	}
-
-	// Listeners can have blank hostnames, so we'll skip validation if that's what we're looking for
-	if allowBlankHost && hostname == "" {
-		return true
-	}
-
-	// Only IPv6 can contain :
-	if strings.Contains(hostname, ":") && (!ValidateIP(hostname)) {
-		return false
-	}
-
-	// If all the parts of the hostname are numbers, validate as IP. Otherwise, it's a hostname
-	hostnameParts := strings.Split(hostname, ".")
-	isIP4 := true
-	for _, section := range hostnameParts {
-		_, err := strconv.Atoi(section)
-		if err != nil {
-			isIP4 = false
-			break
-		}
-	}
-	if isIP4 {
-		return ValidateIP(hostname)
-	}
-	return ValidateHostname(hostname)
+	return false
 }
+
+// Validate the port is a numeric (yeah, strings are valid in some places, but we don't support it)
+
+// Listeners can have blank hostnames, so we'll skip validation if that's what we're looking for
+
+// Only IPv6 can contain :
+
+// If all the parts of the hostname are numbers, validate as IP. Otherwise, it's a hostname

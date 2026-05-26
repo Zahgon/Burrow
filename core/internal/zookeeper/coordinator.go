@@ -14,15 +14,12 @@
 package zookeeper
 
 import (
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/linkedin/go-zk"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	"github.com/linkedin/Burrow/core/internal/helpers"
 	"github.com/linkedin/Burrow/core/protocol"
 )
 
@@ -45,116 +42,32 @@ type Coordinator struct {
 
 // Configure validates that the configuration has a list of servers provided for the Zookeeper ensemble, of the form
 // host:port. It also checks the provided root path, using a default of "/burrow" if none has been provided.
-func (zc *Coordinator) Configure() {
-	zc.Log.Info("configuring")
+func (zc *Coordinator) Configure() { _ = "STUB: not implemented"; return }
 
-	// if zookeeper.tls has been set, use the TLS connect function otherwise use default connect
-	if zc.connectFunc == nil && viper.IsSet("zookeeper.tls") {
-		zc.connectFunc = helpers.ZookeeperConnectTLS
-	} else if zc.connectFunc == nil {
-		zc.connectFunc = helpers.ZookeeperConnect
-	}
+// if zookeeper.tls has been set, use the TLS connect function otherwise use default connect
 
-	// Set and check configs
-	viper.SetDefault("zookeeper.timeout", 6)
-	viper.SetDefault("zookeeper.root-path", "/burrow")
-
-	zc.servers = viper.GetStringSlice("zookeeper.servers")
-	if len(zc.servers) == 0 {
-		panic("No Zookeeper servers specified")
-	} else if !helpers.ValidateHostList(zc.servers) {
-		panic("Failed to validate Zookeeper servers")
-	}
-
-	zc.App.ZookeeperRoot = viper.GetString("zookeeper.root-path")
-	if !helpers.ValidateZookeeperPath(zc.App.ZookeeperRoot) {
-		panic("Zookeeper root path is not valid")
-	}
-
-	zc.running = sync.WaitGroup{}
-}
+// Set and check configs
 
 // Start creates the connection to the Zookeeper ensemble, and assures that the root path exists. Once that is done,
 // it sets the ZookeeperConnected flag in the application context to true, and creates the ZookeeperExpired condition
 // flag. It then starts a main loop to watch for connection state changes.
-func (zc *Coordinator) Start() error {
-	zc.Log.Info("starting")
+func (zc *Coordinator) Start() error { _ = "STUB: not implemented"; return nil }
 
-	// This ZK client will be shared by other parts of Burrow for things like locks
-	// NOTE - samuel/go-zookeeper does not support chroot, so we pass along the configured root path in config
-	zkConn, connEventChan, err := zc.connectFunc(zc.servers, viper.GetDuration("zookeeper.timeout")*time.Second, zc.Log)
-	if err != nil {
-		zc.Log.Panic("Failure to start zookeeper", zap.String("error", err.Error()))
-		return err
-	}
-	zc.App.Zookeeper = zkConn
+// This ZK client will be shared by other parts of Burrow for things like locks
+// NOTE - samuel/go-zookeeper does not support chroot, so we pass along the configured root path in config
 
-	// Assure that our root path exists
-	err = zc.createRecursive(zc.App.ZookeeperRoot)
-	if err != nil {
-		zc.Log.Error("cannot create root path", zap.Error(err))
-		return err
-	}
-
-	zc.App.ZookeeperConnected = true
-	zc.App.ZookeeperExpired = &sync.Cond{L: &sync.Mutex{}}
-
-	go zc.mainLoop(connEventChan)
-
-	return nil
-}
+// Assure that our root path exists
 
 // Stop closes the connection to the Zookeeper ensemble and waits for the connection state monitor to exit (which it
 // will because the event channel will be closed).
-func (zc *Coordinator) Stop() error {
-	zc.Log.Info("stopping")
+func (zc *Coordinator) Stop() error { _ = "STUB: not implemented"; return nil }
 
-	// This will close the event channel, closing the mainLoop
-	zc.App.Zookeeper.Close()
-	zc.running.Wait()
+// This will close the event channel, closing the mainLoop
 
-	return nil
-}
+func (zc *Coordinator) createRecursive(path string) error { _ = "STUB: not implemented"; return nil }
 
-func (zc *Coordinator) createRecursive(path string) error {
-	if path == "/" {
-		return nil
-	}
+// If the rootpath exists, skip the Create process to avoid "zk: not authenticated" error
 
-	parts := strings.Split(path, "/")
-	for i := 2; i <= len(parts); i++ {
-		// If the rootpath exists, skip the Create process to avoid "zk: not authenticated" error
-		exist, _, errExists := zc.App.Zookeeper.Exists(strings.Join(parts[:i], "/"))
-		if !exist {
-			_, err := zc.App.Zookeeper.Create(strings.Join(parts[:i], "/"), []byte{}, 0, zk.WorldACL(zk.PermAll))
-			// Ignore when the node exists already
-			if (err != nil) && (err != zk.ErrNodeExists) {
-				return err
-			}
-		} else {
-			return errExists
-		}
-	}
-	return nil
-}
+// Ignore when the node exists already
 
-func (zc *Coordinator) mainLoop(eventChan <-chan zk.Event) {
-	zc.running.Add(1)
-	defer zc.running.Done()
-
-	for event := range eventChan {
-		if event.Type == zk.EventSession {
-			switch event.State {
-			case zk.StateExpired:
-				zc.Log.Error("session expired")
-				zc.App.ZookeeperConnected = false
-				zc.App.ZookeeperExpired.Broadcast()
-			case zk.StateConnected:
-				if !zc.App.ZookeeperConnected {
-					zc.Log.Info("starting session")
-					zc.App.ZookeeperConnected = true
-				}
-			}
-		}
-	}
-}
+func (zc *Coordinator) mainLoop(eventChan <-chan zk.Event) { _ = "STUB: not implemented"; return }

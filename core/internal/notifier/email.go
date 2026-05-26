@@ -11,19 +11,14 @@ package notifier
 
 import (
 	"crypto/tls"
-	"errors"
-	"fmt"
 	"net/smtp"
 	"regexp"
-	"strings"
 	"text/template"
 	"time"
 
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"gopkg.in/gomail.v2"
 
-	"github.com/linkedin/Burrow/core/internal/helpers"
 	"github.com/linkedin/Burrow/core/protocol"
 )
 
@@ -55,201 +50,101 @@ type EmailNotifier struct {
 // address, and to address. If any of these are missing or incorrect, this func will panic with an explanatory message.
 // It is also possible to specify an auth-type of either "plain" or "crammd5", along with a username and password.
 func (module *EmailNotifier) Configure(name, configRoot string) {
-	module.name = name
+	_ = "STUB: not implemented"
 
 	// Abstract the SendMail call so we can test
-	if module.sendMailFunc == nil {
-		module.sendMailFunc = module.sendEmail
-	}
-
-	host := viper.GetString(configRoot + ".server")
-	port := viper.GetInt(configRoot + ".port")
-
-	serverWithPort := fmt.Sprintf("%s:%v", host, port)
-
-	if !helpers.ValidateHostList([]string{serverWithPort}) {
-		module.Log.Panic("bad server or port")
-		panic(errors.New("configuration error"))
-	}
-
-	module.from = viper.GetString(configRoot + ".from")
-	if module.from == "" {
-		module.Log.Panic("missing 	from address")
-		panic(errors.New("configuration error"))
-	}
-
-	module.to = viper.GetString(configRoot + ".to")
-	if module.to == "" {
-		module.Log.Panic("missing to address")
-		panic(errors.New("configuration error"))
-	}
-
-	// Set up dialer and extra TLS configuration
-	extraCa := viper.GetString(configRoot + ".extra-ca")
-	noVerify := viper.GetBool(configRoot + ".noverify")
-
-	d := gomail.NewDialer(host, port, "", "")
-	d.Auth = module.getSMTPAuth(configRoot)
-	d.TLSConfig = buildEmailTLSConfig(extraCa, noVerify, host)
-
-	module.smtpDialer = d
+	return
 }
 
-func buildEmailTLSConfig(extraCaFile string, noVerify bool, smtpHost string) *tls.Config {
-	rootCAs := buildRootCAs(extraCaFile, noVerify)
+// Set up dialer and extra TLS configuration
 
-	return &tls.Config{
-		InsecureSkipVerify: noVerify,
-		ServerName:         smtpHost,
-		RootCAs:            rootCAs,
-	}
+func buildEmailTLSConfig(extraCaFile string, noVerify bool, smtpHost string) *tls.Config {
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // Builds authentication profile for smtp client
 func (module *EmailNotifier) getSMTPAuth(configRoot string) smtp.Auth {
-	var auth smtp.Auth
-	// Set up SMTP authentication
-	switch strings.ToLower(viper.GetString(configRoot + ".auth-type")) {
-	case "plain":
-		auth = smtp.PlainAuth("", viper.GetString(configRoot+".username"), viper.GetString(configRoot+".password"), viper.GetString(configRoot+".server"))
-	case "crammd5":
-		auth = smtp.CRAMMD5Auth(viper.GetString(configRoot+".username"), viper.GetString(configRoot+".password"))
-	case "":
-		auth = nil
-	default:
-		module.Log.Panic("unknown auth type")
-		panic(errors.New("configuration error"))
-	}
+	_ = "STUB: not implemented"
 
-	return auth
+	// Set up SMTP authentication
+	return *new(smtp.Auth)
 }
 
 // Start is a no-op for the email notifier. It always returns no error
 func (module *EmailNotifier) Start() error {
+	_ = "STUB: not implemented"
+
+	// Stop is a no-op for the email notifier. It always returns no error
 	return nil
 }
 
-// Stop is a no-op for the email notifier. It always returns no error
 func (module *EmailNotifier) Stop() error {
+	_ = "STUB: not implemented"
+
+	// GetName returns the configured name of this module
 	return nil
 }
 
-// GetName returns the configured name of this module
 func (module *EmailNotifier) GetName() string {
-	return module.name
+	_ = "STUB: not implemented"
+
+	// GetGroupAllowlist returns the compiled group allowlist (or nil, if there is not one)
+	return ""
 }
 
-// GetGroupAllowlist returns the compiled group allowlist (or nil, if there is not one)
 func (module *EmailNotifier) GetGroupAllowlist() *regexp.Regexp {
-	return module.groupAllowlist
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // GetGroupDenylist returns the compiled group denylist (or nil, if there is not one)
 func (module *EmailNotifier) GetGroupDenylist() *regexp.Regexp {
-	return module.groupDenylist
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // GetLogger returns the configured zap.Logger for this notifier
 func (module *EmailNotifier) GetLogger() *zap.Logger {
-	return module.Log
+	_ = "STUB: not implemented"
+
+	// AcceptConsumerGroup has no additional function for the email notifier, and so always returns true
+	return nil
 }
 
-// AcceptConsumerGroup has no additional function for the email notifier, and so always returns true
 func (module *EmailNotifier) AcceptConsumerGroup(status *protocol.ConsumerGroupStatus) bool {
-	return true
+	_ = "STUB: not implemented"
+
+	// Notify sends a single email message, with the from and to set to the configured addresses for the notifier. The
+	// status, eventID, and startTime are all passed to the template for compiling the message. If stateGood is true, the
+	// "close" template is used. Otherwise, the "open" template is used.
+	return false
 }
 
-// Notify sends a single email message, with the from and to set to the configured addresses for the notifier. The
-// status, eventID, and startTime are all passed to the template for compiling the message. If stateGood is true, the
-// "close" template is used. Otherwise, the "open" template is used.
 func (module *EmailNotifier) Notify(status *protocol.ConsumerGroupStatus, eventID string, startTime time.Time, stateGood bool) {
-	logger := module.Log.With(
-		zap.String("cluster", status.Cluster),
-		zap.String("group", status.Group),
-		zap.String("id", eventID),
-		zap.String("status", status.Status.String()),
-	)
-
-	var tmpl *template.Template
-	if stateGood {
-		tmpl = module.templateClose
-	} else {
-		tmpl = module.templateOpen
-	}
-
-	// Put the from and to lines in without the template. Template should set the subject line, followed by a blank line
-	messageContent, err := executeTemplate(tmpl, module.extras, status, eventID, startTime)
-
-	if err != nil {
-		logger.Error("failed to assemble", zap.Error(err))
-		return
-	}
-
-	// Process template headers and send email
-	if m, err := module.createMessage(messageContent.String()); err == nil {
-		if err := module.sendMailFunc(m); err != nil {
-			logger.Error("failed to send", zap.Error(err))
-		}
-	} else {
-		logger.Error("failed to send", zap.Error(err))
-	}
+	_ = "STUB: not implemented"
+	return
 }
+
+// Put the from and to lines in without the template. Template should set the subject line, followed by a blank line
+
+// Process template headers and send email
 
 // sendEmail uses the gomail smtpDialer to send a constructed message. This function is mocked for testing purposes
 func (module *EmailNotifier) sendEmail(m *gomail.Message) error {
-	if err := module.smtpDialer.DialAndSend(m); err != nil {
-		return err
-	}
-
+	_ = "STUB: not implemented"
 	return nil
 }
 
 // createMessage organizes all relevant email message content into a structure for easy use
 func (module *EmailNotifier) createMessage(messageContent string) (*gomail.Message, error) {
-	m := gomail.NewMessage()
-	var subject string
-	var mimeVersion string
-
-	contentType := "text/plain"
-
-	subjectDelimiter := "Subject: "
-	contentTypeDelimiter := "Content-Type: "
-	mimeVersionDelimiter := "MIME-version: "
-
-	if !strings.HasPrefix(messageContent, subjectDelimiter) {
-		return nil, errors.New("no subject line detected. Please make sure" +
-			" \"Subject: my_subject_line\" is included in your template")
-	}
-
-	var body string
-
-	// Go doesn't support regex lookaheads yet
-	for _, line := range strings.Split(messageContent, "\n") {
-		if strings.HasPrefix(line, subjectDelimiter) && subject == "" {
-			subject = getKeywordContent(line, subjectDelimiter)
-		} else if strings.HasPrefix(line, contentTypeDelimiter) {
-			contentType = strings.Replace(getKeywordContent(line, contentTypeDelimiter), ";", "", -1)
-		} else if strings.HasPrefix(line, mimeVersionDelimiter) {
-			mimeVersion = strings.Replace(getKeywordContent(line, mimeVersionDelimiter), ";", "", -1)
-		} else {
-			body = body + line + "\n"
-		}
-	}
-
-	recipients := strings.Split(module.to, ",")
-	m.SetHeader("To", recipients...)
-	m.SetHeader("From", module.from)
-	m.SetHeader("Subject", subject)
-
-	if mimeVersion != "" {
-		m.SetHeader("MIME-version", mimeVersion)
-	}
-
-	m.SetBody(contentType, body)
-
-	return m, nil
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
+// Go doesn't support regex lookaheads yet
+
 func getKeywordContent(header, subjectDelimiter string) string {
-	return strings.Split(header, subjectDelimiter)[1]
+	_ = "STUB: not implemented"
+	return ""
 }

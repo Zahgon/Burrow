@@ -53,50 +53,48 @@ type NullNotifier struct {
 }
 
 // Configure sets the module name, but performs no other functions for the null notifier
-func (module *NullNotifier) Configure(name, configRoot string) {
-	module.name = name
-	module.CalledConfigure = true
-}
+func (module *NullNotifier) Configure(name, configRoot string) { _ = "STUB: not implemented"; return }
 
 // Start is a no-op for the null notifier. It always returns no error
-func (module *NullNotifier) Start() error {
-	module.CalledStart = true
-	return nil
-}
+func (module *NullNotifier) Start() error { _ = "STUB: not implemented"; return nil }
 
 // Stop is a no-op for the null notifier. It always returns no error
-func (module *NullNotifier) Stop() error {
-	module.CalledStop = true
-	return nil
-}
+func (module *NullNotifier) Stop() error { _ = "STUB: not implemented"; return nil }
 
 // GetName returns the configured name of this module
 func (module *NullNotifier) GetName() string {
-	return module.name
+	_ = "STUB: not implemented"
+
+	// GetGroupAllowlist returns the compiled group allowlist (or nil, if there is not one)
+	return ""
 }
 
-// GetGroupAllowlist returns the compiled group allowlist (or nil, if there is not one)
 func (module *NullNotifier) GetGroupAllowlist() *regexp.Regexp {
-	return module.groupAllowlist
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // GetGroupDenylist returns the compiled group denylist (or nil, if there is not one)
 func (module *NullNotifier) GetGroupDenylist() *regexp.Regexp {
-	return module.groupDenylist
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // GetLogger returns the configured zap.Logger for this notifier
 func (module *NullNotifier) GetLogger() *zap.Logger {
-	return module.Log
+	_ = "STUB: not implemented"
+
+	// AcceptConsumerGroup has no additional function for the null notifier, and so always returns true
+	return nil
 }
 
-// AcceptConsumerGroup has no additional function for the null notifier, and so always returns true
 func (module *NullNotifier) AcceptConsumerGroup(status *protocol.ConsumerGroupStatus) bool {
-	module.CalledAcceptConsumerGroup = true
-	return true
+	_ = "STUB: not implemented"
+	return false
 }
 
 // Notify is a no-op for the null notifier
 func (module *NullNotifier) Notify(status *protocol.ConsumerGroupStatus, eventID string, startTime time.Time, stateGood bool) {
-	module.CalledNotify = true
+	_ = "STUB: not implemented"
+	return
 }

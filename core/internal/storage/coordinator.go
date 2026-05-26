@@ -19,13 +19,10 @@
 package storage
 
 import (
-	"errors"
 	"sync"
 
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	"github.com/linkedin/Burrow/core/internal/helpers"
 	"github.com/linkedin/Burrow/core/protocol"
 )
 
@@ -58,53 +55,21 @@ type Coordinator struct {
 // getModuleForClass returns the correct module based on the passed className. As part of the Configure steps, if there
 // is any error, it will panic with an appropriate message describing the problem.
 func getModuleForClass(app *protocol.ApplicationContext, moduleName, className string) Module {
-	switch className {
-	case "inmemory":
-		return &InMemoryStorage{
-			App: app,
-			Log: app.Logger.With(
-				zap.String("type", "module"),
-				zap.String("coordinator", "storage"),
-				zap.String("class", className),
-				zap.String("name", moduleName),
-			),
-		}
-	default:
-		panic("Unknown storage className provided: " + className)
-	}
+	_ = "STUB: not implemented"
+	return *new(Module)
 }
 
 // Configure is called to create the configured storage module and call its Configure func to validate the
 // configuration and set it up. The coordinator will panic is more than one module is configured, and if no modules have
 // been configured, it will set up a default inmemory storage module. If there are any problems, it is expected that
 // this func will panic with a descriptive error message, as configuration failures are not recoverable errors.
-func (sc *Coordinator) Configure() {
-	sc.Log.Info("configuring")
-	sc.quitChannel = make(chan struct{})
-	sc.modules = make(map[string]protocol.Module)
-	sc.running = sync.WaitGroup{}
+func (sc *Coordinator) Configure() { _ = "STUB: not implemented"; return }
 
-	modules := viper.GetStringMap("storage")
-	switch len(modules) {
-	case 0:
-		// Create a default module
-		viper.Set("storage.default.class-name", "inmemory")
-		modules = viper.GetStringMap("storage")
-	case 1:
-		// Have one module. Just continue
-		break
-	default:
-		panic("Only one storage module must be configured")
-	}
+// Create a default module
 
-	// Create all configured storage modules, add to list of storage
-	for name := range modules {
-		configRoot := "storage." + name
-		module := getModuleForClass(sc.App, name, viper.GetString(configRoot+".class-name"))
-		module.Configure(name, configRoot)
-		sc.modules[name] = module
-	}
-}
+// Have one module. Just continue
+
+// Create all configured storage modules, add to list of storage
 
 // Start calls the storage module's underlying Start func. If the module Start returns an error, this func stops
 // immediately and returns that error to the caller.
@@ -112,53 +77,23 @@ func (sc *Coordinator) Configure() {
 // We also start a request forwarder goroutine. This listens to the StorageChannel that is provided in the application
 // context that all modules receive, and forwards those requests to the storage modules. At the present time, the
 // storage subsystem only supports one module, so this is a simple "accept and forward".
-func (sc *Coordinator) Start() error {
-	sc.Log.Info("starting")
+func (sc *Coordinator) Start() error { _ = "STUB: not implemented"; return nil }
 
-	// Start Storage modules
-	err := helpers.StartCoordinatorModules(sc.modules)
-	if err != nil {
-		return errors.New("Error starting storage module: " + err.Error())
-	}
+// Start Storage modules
 
-	// Start request forwarder
-	go sc.mainLoop()
-	return nil
-}
+// Start request forwarder
 
 // Stop calls the configured storage module's underlying Stop func. It is expected that the module Stop will not return
 // until the module has been completely stopped. While an error can be returned, this func always returns no error, as
 // a failure during stopping is not a critical failure
-func (sc *Coordinator) Stop() error {
-	sc.Log.Info("stopping")
+func (sc *Coordinator) Stop() error { _ = "STUB: not implemented"; return nil }
 
-	close(sc.quitChannel)
-	sc.running.Wait()
+// The individual storage modules can choose whether or not to implement a wait in the Stop routine
 
-	// The individual storage modules can choose whether or not to implement a wait in the Stop routine
-	helpers.StopCoordinatorModules(sc.modules)
-	return nil
-}
+func (sc *Coordinator) mainLoop() { _ = "STUB: not implemented"; return }
 
-func (sc *Coordinator) mainLoop() {
-	sc.running.Add(1)
-	defer sc.running.Done()
+// We only support 1 module right now, so only send to that module
 
-	// We only support 1 module right now, so only send to that module
-	var channel chan *protocol.StorageRequest
-	for _, module := range sc.modules {
-		channel = module.(Module).GetCommunicationChannel()
-	}
-
-	for {
-		select {
-		case request := <-sc.App.StorageChannel:
-			// Yes, this forwarder is silly. However, in the future we want to support multiple storage modules
-			// concurrently. However, that will require implementing a router that properly handles sets and
-			// fetches and makes sure only 1 module responds to fetches
-			channel <- request
-		case <-sc.quitChannel:
-			return
-		}
-	}
-}
+// Yes, this forwarder is silly. However, in the future we want to support multiple storage modules
+// concurrently. However, that will require implementing a router that properly handles sets and
+// fetches and makes sure only 1 module responds to fetches

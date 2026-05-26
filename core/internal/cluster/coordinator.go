@@ -20,12 +20,8 @@
 package cluster
 
 import (
-	"errors"
-
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	"github.com/linkedin/Burrow/core/internal/helpers"
 	"github.com/linkedin/Burrow/core/protocol"
 )
 
@@ -50,61 +46,27 @@ type Coordinator struct {
 // getModuleForClass returns the correct module based on the passed className. As part of the Configure steps, if there
 // is any error, it will panic with an appropriate message describing the problem.
 func getModuleForClass(app *protocol.ApplicationContext, moduleName, className string) protocol.Module {
-	switch className {
-	case "kafka":
-		return &KafkaCluster{
-			App: app,
-			Log: app.Logger.With(
-				zap.String("type", "module"),
-				zap.String("coordinator", "cluster"),
-				zap.String("class", className),
-				zap.String("name", moduleName),
-			),
-		}
-	default:
-		panic("Unknown cluster className provided: " + className)
-	}
+	_ = "STUB: not implemented"
+	return *new(protocol.Module)
 }
 
 // Configure is called to create each of the configured cluster modules and call their Configure funcs to validate
 // their individual configurations and set them up. If there are any problems, it is expected that these funcs will
 // panic with a descriptive error message, as configuration failures are not recoverable errors.
-func (bc *Coordinator) Configure() {
-	bc.Log.Info("configuring")
+func (bc *Coordinator) Configure() { _ = "STUB: not implemented"; return }
 
-	bc.modules = make(map[string]protocol.Module)
-
-	// Create all configured cluster modules, add to list of clusters
-	modules := viper.GetStringMap("cluster")
-	for name := range modules {
-		configRoot := "cluster." + name
-		module := getModuleForClass(bc.App, name, viper.GetString(configRoot+".class-name"))
-		module.Configure(name, configRoot)
-		bc.modules[name] = module
-	}
-}
+// Create all configured cluster modules, add to list of clusters
 
 // Start calls each of the configured cluster modules' underlying Start funcs. As the coordinator itself has no ongoing
 // work to do, it does not start any other goroutines. If any module Start returns an error, this func stops immediately
 // and returns that error to the caller. No further modules will be loaded after that.
-func (bc *Coordinator) Start() error {
-	bc.Log.Info("starting")
+func (bc *Coordinator) Start() error { _ = "STUB: not implemented"; return nil }
 
-	// Start Cluster modules
-	err := helpers.StartCoordinatorModules(bc.modules)
-	if err != nil {
-		return errors.New("Error starting cluster module: " + err.Error())
-	}
-	return nil
-}
+// Start Cluster modules
 
 // Stop calls each of the configured cluster modules' underlying Stop funcs. It is expected that the module Stop will
 // not return until the module has been completely stopped. While an error can be returned, this func always returns no
 // error, as a failure during stopping is not a critical failure
-func (bc *Coordinator) Stop() error {
-	bc.Log.Info("stopping")
+func (bc *Coordinator) Stop() error { _ = "STUB: not implemented"; return nil }
 
-	// The individual cluster modules can choose whether or not to implement a wait in the Stop routine
-	helpers.StopCoordinatorModules(bc.modules)
-	return nil
-}
+// The individual cluster modules can choose whether or not to implement a wait in the Stop routine

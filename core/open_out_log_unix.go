@@ -14,10 +14,4 @@
 
 package core
 
-import (
-	"syscall"
-)
-
-func internalDup2(oldfd, newfd uintptr) error {
-	return syscall.Dup2(int(oldfd), int(newfd))
-}
+func internalDup2(oldfd, newfd uintptr) error { _ = "STUB: not implemented"; return nil }

@@ -10,17 +10,9 @@
 package helpers
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"fmt"
-	"os"
-	"time"
-
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/IBM/sarama"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -48,131 +40,31 @@ var legacyKafkaVersionFallback = map[string]sarama.KafkaVersion{
 }
 
 func parseKafkaVersion(kafkaVersion string) sarama.KafkaVersion {
-	version, err := sarama.ParseKafkaVersion(kafkaVersion)
-	if err != nil {
-		// try find the version in the legacy matching
-		version1, ok := legacyKafkaVersionFallback[kafkaVersion]
-		if !ok {
-			panic("Unknown Kafka Version: " + kafkaVersion)
-		}
-		version = version1
-	}
-
-	return version
+	_ = "STUB: not implemented"
+	return *new(sarama.KafkaVersion)
 }
+
+// try find the version in the legacy matching
 
 // GetSaramaConfigFromClientProfile takes the name of a client-profile configuration entry and returns a sarama.Config
 // object that can be used to create a Sarama client with the specified configuration. This includes the Kafka version,
 // client ID, TLS, and SASL configs. If there is any error in the configuration, such as a bad TLS certificate file,
 // this func will panic as it is normally called when configuring modules.
 func GetSaramaConfigFromClientProfile(profileName string) *sarama.Config {
+	_ = "STUB: not implemented"
 	// Set config root and defaults
-	configRoot := "client-profile." + profileName
-	if (profileName != "") && (!viper.IsSet("client-profile." + profileName)) {
-		panic("unknown client-profile '" + profileName + "'")
-	}
-
-	viper.SetDefault(configRoot+".client-id", "burrow-lagchecker")
-	viper.SetDefault(configRoot+".kafka-version", "2.8.0")
-
-	saramaConfig := sarama.NewConfig()
-	saramaConfig.ClientID = viper.GetString(configRoot + ".client-id")
-	saramaConfig.Version = parseKafkaVersion(viper.GetString(configRoot + ".kafka-version"))
-	saramaConfig.Consumer.Return.Errors = true
-
-	// Configure TLS if enabled
-	if viper.IsSet(configRoot + ".tls") {
-		tlsName := viper.GetString(configRoot + ".tls")
-
-		saramaConfig.Net.TLS.Enable = true
-		certFile := viper.GetString("tls." + tlsName + ".certfile")
-		keyFile := viper.GetString("tls." + tlsName + ".keyfile")
-		caFile := viper.GetString("tls." + tlsName + ".cafile")
-
-		if caFile == "" {
-			saramaConfig.Net.TLS.Config = &tls.Config{}
-		} else {
-			caCert, err := os.ReadFile(caFile)
-			if err != nil {
-				panic("cannot read TLS CA file: " + err.Error())
-			}
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM(caCert)
-			saramaConfig.Net.TLS.Config = &tls.Config{
-				RootCAs: caCertPool,
-			}
-
-			if certFile != "" && keyFile != "" {
-				cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-				if err != nil {
-					panic("cannot read TLS certificate or key file: " + err.Error())
-				}
-				saramaConfig.Net.TLS.Config.Certificates = []tls.Certificate{cert}
-			}
-		}
-		saramaConfig.Net.TLS.Config.InsecureSkipVerify = viper.GetBool("tls." + tlsName + ".noverify")
-	}
-
-	// Configure SASL if enabled
-	if viper.IsSet(configRoot + ".sasl") {
-		saslName := viper.GetString(configRoot + ".sasl")
-
-		saramaConfig.Net.SASL.Enable = true
-		mechanism := viper.GetString("sasl." + saslName + ".mechanism")
-		if mechanism == "SCRAM-SHA-256" {
-			saramaConfig.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
-			saramaConfig.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient {
-				return &XDGSCRAMClient{HashGeneratorFcn: SHA256}
-			}
-		} else if mechanism == "SCRAM-SHA-512" {
-			saramaConfig.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA512
-			saramaConfig.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient {
-				return &XDGSCRAMClient{HashGeneratorFcn: SHA512}
-			}
-		} else if mechanism == "PLAIN" {
-			saramaConfig.Net.SASL.Mechanism = sarama.SASLTypePlaintext
-			viper.Set("sasl."+saslName+".handshake-first", true)
-		}
-		saramaConfig.Net.SASL.Handshake = viper.GetBool("sasl." + saslName + ".handshake-first")
-		saramaConfig.Net.SASL.User = viper.GetString("sasl." + saslName + ".username")
-		saramaConfig.Net.SASL.Password = viper.GetString("sasl." + saslName + ".password")
-	}
-
-	if iamName := viper.GetString(configRoot + ".iam"); iamName != "" {
-		iamRoot := "iam." + iamName
-		region := viper.GetString(iamRoot + ".region")
-		if region == "" {
-			panic(fmt.Sprintf("iam.%s: region is required", iamName))
-		}
-
-		// IAM auth *requires* TLS
-		if !saramaConfig.Net.TLS.Enable {
-			panic(fmt.Sprintf("client-profile %s uses iam.%s but has no tls profile",
-				profileName, iamName))
-		}
-
-		saramaConfig.Net.SASL.Enable = true
-		saramaConfig.Net.SASL.Handshake = true
-		saramaConfig.Net.SASL.Mechanism = sarama.SASLTypeOAuth
-		saramaConfig.Net.SASL.TokenProvider = &iamTokenProvider{
-			region:  region,
-			roleArn: viper.GetString(iamRoot + ".role-arn"),
-			profile: viper.GetString(iamRoot + ".profile"),
-		}
-	}
-
-	// Timeout for the initial connection
-	if viper.IsSet(configRoot + ".dial-timeout") {
-		saramaConfig.Net.DialTimeout = time.Duration(viper.GetInt(configRoot+".dial-timeout")) * time.Second
-	}
-
-	// Timeout for a request's response
-	if viper.IsSet(configRoot + ".read-timeout") {
-		saramaConfig.Net.ReadTimeout = time.Duration(viper.GetInt(configRoot+".read-timeout")) * time.Second
-	}
-
-	return saramaConfig
+	return nil
 }
+
+// Configure TLS if enabled
+
+// Configure SASL if enabled
+
+// IAM auth *requires* TLS
+
+// Timeout for the initial connection
+
+// Timeout for a request's response
 
 // SaramaClient is an internal interface to the sarama.Client. We use our own interface because while sarama.Client is
 // an interface, sarama.Broker is not. This makes it difficult to test code which uses the Broker objects. This
@@ -248,105 +140,95 @@ type BurrowSaramaClient struct {
 }
 
 // Config returns the Config struct of the client. This struct should not be altered after it has been created.
-func (c *BurrowSaramaClient) Config() *sarama.Config {
-	return c.Client.Config()
-}
+func (c *BurrowSaramaClient) Config() *sarama.Config { _ = "STUB: not implemented"; return nil }
 
 // Brokers returns the current set of active brokers as retrieved from cluster metadata.
-func (c *BurrowSaramaClient) Brokers() []SaramaBroker {
-	brokers := c.Client.Brokers()
-	shimBrokers := make([]SaramaBroker, len(brokers))
-	for i, broker := range brokers {
-		shimBrokers[i] = &BurrowSaramaBroker{broker}
-	}
-	return shimBrokers
-}
+func (c *BurrowSaramaClient) Brokers() []SaramaBroker { _ = "STUB: not implemented"; return nil }
 
 // Topics returns the set of available topics as retrieved from cluster metadata.
 func (c *BurrowSaramaClient) Topics() ([]string, error) {
-	return c.Client.Topics()
+	_ = "STUB: not implemented"
+	return nil,
+
+		// Partitions returns the sorted list of all partition IDs for the given topic.
+		nil
 }
 
-// Partitions returns the sorted list of all partition IDs for the given topic.
 func (c *BurrowSaramaClient) Partitions(topic string) ([]int32, error) {
-	return c.Client.Partitions(topic)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // WritablePartitions returns the sorted list of all writable partition IDs for the given topic, where "writable"
 // means "having a valid leader accepting writes".
 func (c *BurrowSaramaClient) WritablePartitions(topic string) ([]int32, error) {
-	return c.Client.WritablePartitions(topic)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // Leader returns the broker object that is the leader of the current topic/partition, as determined by querying the
 // cluster metadata.
 func (c *BurrowSaramaClient) Leader(topic string, partitionID int32) (SaramaBroker, error) {
-	broker, err := c.Client.Leader(topic, partitionID)
-	var shimBroker *BurrowSaramaBroker
-	if broker != nil {
-		shimBroker = &BurrowSaramaBroker{broker}
-	}
-	return shimBroker, err
+	_ = "STUB: not implemented"
+	return *new(SaramaBroker), nil
 }
 
 // Replicas returns the set of all replica IDs for the given partition.
 func (c *BurrowSaramaClient) Replicas(topic string, partitionID int32) ([]int32, error) {
-	return c.Client.Replicas(topic, partitionID)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // InSyncReplicas returns the set of all in-sync replica IDs for the given partition. In-sync replicas are replicas
 // which are fully caught up with the partition leader.
 func (c *BurrowSaramaClient) InSyncReplicas(topic string, partitionID int32) ([]int32, error) {
-	return c.Client.InSyncReplicas(topic, partitionID)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // RefreshMetadata takes a list of topics and queries the cluster to refresh the available metadata for those topics.
 // If no topics are provided, it will refresh metadata for all topics.
 func (c *BurrowSaramaClient) RefreshMetadata(topics ...string) error {
-	return c.Client.RefreshMetadata(topics...)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // GetOffset queries the cluster to get the most recent available offset at the given time (in milliseconds) on the
 // topic/partition combination. Time should be OffsetOldest for the earliest available offset, OffsetNewest for the
 // offset of the message that will be produced next, or a time.
 func (c *BurrowSaramaClient) GetOffset(topic string, partitionID int32, timestamp int64) (int64, error) {
-	return c.Client.GetOffset(topic, partitionID, timestamp)
+	_ = "STUB: not implemented"
+	return 0, nil
 }
 
 // Coordinator returns the coordinating broker for a consumer group. It will return a locally cached value if it's
 // available. You can call RefreshCoordinator to update the cached value. This function only works on Kafka 0.8.2 and
 // higher.
 func (c *BurrowSaramaClient) Coordinator(consumerGroup string) (SaramaBroker, error) {
-	broker, err := c.Client.Coordinator(consumerGroup)
-	var shimBroker *BurrowSaramaBroker
-	if broker != nil {
-		shimBroker = &BurrowSaramaBroker{broker}
-	}
-	return shimBroker, err
+	_ = "STUB: not implemented"
+	return *new(SaramaBroker), nil
 }
 
 // RefreshCoordinator retrieves the coordinator for a consumer group and stores it in local cache. This function only
 // works on Kafka 0.8.2 and higher.
 func (c *BurrowSaramaClient) RefreshCoordinator(consumerGroup string) error {
-	return c.Client.RefreshCoordinator(consumerGroup)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // Close shuts down all broker connections managed by this client. It is required to call this function before a client
 // object passes out of scope, as it will otherwise leak memory. You must close any Producers or Consumers using a
 // client before you close the client.
-func (c *BurrowSaramaClient) Close() error {
-	return c.Client.Close()
-}
+func (c *BurrowSaramaClient) Close() error { _ = "STUB: not implemented"; return nil }
 
 // Closed returns true if the client has already had Close called on it
-func (c *BurrowSaramaClient) Closed() bool {
-	return c.Client.Closed()
-}
+func (c *BurrowSaramaClient) Closed() bool { _ = "STUB: not implemented"; return false }
 
 // NewConsumerFromClient creates a new consumer using the given client. It is still necessary to call Close() on the
 // underlying client when shutting down this consumer.
 func (c *BurrowSaramaClient) NewConsumerFromClient() (sarama.Consumer, error) {
-	return sarama.NewConsumerFromClient(c.Client)
+	_ = "STUB: not implemented"
+	return *new(sarama.Consumer), nil
 }
 
 // SaramaBroker is an internal interface on the sarama.Broker struct. It is used with the SaramaClient interface in
@@ -370,27 +252,21 @@ type BurrowSaramaBroker struct {
 }
 
 // ID returns the broker ID retrieved from Kafka's metadata, or -1 if that is not known.
-func (b *BurrowSaramaBroker) ID() int32 {
-	return b.broker.ID()
-}
+func (b *BurrowSaramaBroker) ID() int32 { _ = "STUB: not implemented"; return 0 }
 
 // Close closes the connection associated with the broker
-func (b *BurrowSaramaBroker) Close() error {
-	return b.broker.Close()
-}
+func (b *BurrowSaramaBroker) Close() error { _ = "STUB: not implemented"; return nil }
 
 // GetAvailableOffsets sends an OffsetRequest to the broker and returns the OffsetResponse that was received
 func (b *BurrowSaramaBroker) GetAvailableOffsets(request *sarama.OffsetRequest) (*sarama.OffsetResponse, error) {
-	return b.broker.GetAvailableOffsets(request)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // ListConsumerGroups List the consumer groups available in the cluster.
 func (c *BurrowSaramaClient) ListConsumerGroups() (map[string]string, error) {
-	admin, err := sarama.NewClusterAdminFromClient(c.Client)
-	if err != nil {
-		return nil, err
-	}
-	return admin.ListConsumerGroups()
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // MockSaramaClient is a mock of SaramaClient. It is used in tests by multiple packages. It should never be used in the
@@ -400,103 +276,83 @@ type MockSaramaClient struct {
 }
 
 // Config mocks SaramaClient.Config
-func (m *MockSaramaClient) Config() *sarama.Config {
-	args := m.Called()
-	return args.Get(0).(*sarama.Config)
-}
+func (m *MockSaramaClient) Config() *sarama.Config { _ = "STUB: not implemented"; return nil }
 
 // Brokers mocks SaramaClient.Brokers
-func (m *MockSaramaClient) Brokers() []SaramaBroker {
-	args := m.Called()
-	return args.Get(0).([]SaramaBroker)
-}
+func (m *MockSaramaClient) Brokers() []SaramaBroker { _ = "STUB: not implemented"; return nil }
 
 // Topics mocks SaramaClient.Topics
-func (m *MockSaramaClient) Topics() ([]string, error) {
-	args := m.Called()
-	return args.Get(0).([]string), args.Error(1)
-}
+func (m *MockSaramaClient) Topics() ([]string, error) { _ = "STUB: not implemented"; return nil, nil }
 
 // Partitions mocks SaramaClient.Partitions
 func (m *MockSaramaClient) Partitions(topic string) ([]int32, error) {
-	args := m.Called(topic)
-	return args.Get(0).([]int32), args.Error(1)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // WritablePartitions mocks SaramaClient.WritablePartitions
 func (m *MockSaramaClient) WritablePartitions(topic string) ([]int32, error) {
-	args := m.Called(topic)
-	return args.Get(0).([]int32), args.Error(1)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // Leader mocks SaramaClient.Leader
 func (m *MockSaramaClient) Leader(topic string, partitionID int32) (SaramaBroker, error) {
-	args := m.Called(topic, partitionID)
-	return args.Get(0).(SaramaBroker), args.Error(1)
+	_ = "STUB: not implemented"
+	return *new(SaramaBroker), nil
 }
 
 // Replicas mocks SaramaClient.Replicas
 func (m *MockSaramaClient) Replicas(topic string, partitionID int32) ([]int32, error) {
-	args := m.Called(topic, partitionID)
-	return args.Get(0).([]int32), args.Error(1)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // InSyncReplicas mocks SaramaClient.InSyncReplicas
 func (m *MockSaramaClient) InSyncReplicas(topic string, partitionID int32) ([]int32, error) {
-	args := m.Called(topic, partitionID)
-	return args.Get(0).([]int32), args.Error(1)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // RefreshMetadata mocks SaramaClient.RefreshMetadata
 func (m *MockSaramaClient) RefreshMetadata(topics ...string) error {
-	if len(topics) > 0 {
-		args := m.Called([]interface{}{topics}...)
-		return args.Error(0)
-	}
-
-	args := m.Called()
-	return args.Error(0)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // GetOffset mocks SaramaClient.GetOffset
 func (m *MockSaramaClient) GetOffset(topic string, partitionID int32, timestamp int64) (int64, error) {
-	args := m.Called(topic, partitionID, timestamp)
-	return args.Get(0).(int64), args.Error(1)
+	_ = "STUB: not implemented"
+	return 0, nil
 }
 
 // Coordinator mocks SaramaClient.Coordinator
 func (m *MockSaramaClient) Coordinator(consumerGroup string) (SaramaBroker, error) {
-	args := m.Called(consumerGroup)
-	return args.Get(0).(SaramaBroker), args.Error(1)
+	_ = "STUB: not implemented"
+	return *new(SaramaBroker), nil
 }
 
 // RefreshCoordinator mocks SaramaClient.RefreshCoordinator
 func (m *MockSaramaClient) RefreshCoordinator(consumerGroup string) error {
-	args := m.Called(consumerGroup)
-	return args.Error(0)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // Close mocks SaramaClient.Close
-func (m *MockSaramaClient) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
+func (m *MockSaramaClient) Close() error { _ = "STUB: not implemented"; return nil }
 
 // Closed mocks SaramaClient.Closed
-func (m *MockSaramaClient) Closed() bool {
-	args := m.Called()
-	return args.Bool(0)
-}
+func (m *MockSaramaClient) Closed() bool { _ = "STUB: not implemented"; return false }
 
 // NewConsumerFromClient mocks SaramaClient.NewConsumerFromClient
 func (m *MockSaramaClient) NewConsumerFromClient() (sarama.Consumer, error) {
-	args := m.Called()
-	return args.Get(0).(sarama.Consumer), args.Error(1)
+	_ = "STUB: not implemented"
+	return *new(sarama.Consumer), nil
 }
 
 func (m *MockSaramaClient) ListConsumerGroups() (map[string]string, error) {
-	args := m.Called()
-	return args.Get(0).(map[string]string), args.Error(1)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // MockSaramaBroker is a mock of SaramaBroker. It is used in tests by multiple packages. It should never be used in the
@@ -506,21 +362,15 @@ type MockSaramaBroker struct {
 }
 
 // ID mocks SaramaBroker.ID
-func (m *MockSaramaBroker) ID() int32 {
-	args := m.Called()
-	return args.Get(0).(int32)
-}
+func (m *MockSaramaBroker) ID() int32 { _ = "STUB: not implemented"; return 0 }
 
 // Close mocks SaramaBroker.Close
-func (m *MockSaramaBroker) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
+func (m *MockSaramaBroker) Close() error { _ = "STUB: not implemented"; return nil }
 
 // GetAvailableOffsets mocks SaramaBroker.GetAvailableOffsets
 func (m *MockSaramaBroker) GetAvailableOffsets(request *sarama.OffsetRequest) (*sarama.OffsetResponse, error) {
-	args := m.Called(request)
-	return args.Get(0).(*sarama.OffsetResponse), args.Error(1)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // MockSaramaConsumer is a mock of sarama.Consumer. It is used in tests by multiple packages. It should never be used
@@ -530,113 +380,109 @@ type MockSaramaConsumer struct {
 }
 
 // Topics mocks sarama.Consumer.Topics
-func (m *MockSaramaConsumer) Topics() ([]string, error) {
-	args := m.Called()
-	return args.Get(0).([]string), args.Error(1)
-}
+func (m *MockSaramaConsumer) Topics() ([]string, error) { _ = "STUB: not implemented"; return nil, nil }
 
 // Partitions mocks sarama.Consumer.Partitions
 func (m *MockSaramaConsumer) Partitions(topic string) ([]int32, error) {
-	args := m.Called(topic)
-	return args.Get(0).([]int32), args.Error(1)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // ConsumePartition mocks sarama.Consumer.ConsumePartition
 func (m *MockSaramaConsumer) ConsumePartition(topic string, partition int32, offset int64) (sarama.PartitionConsumer, error) {
-	args := m.Called(topic, partition, offset)
-	return args.Get(0).(sarama.PartitionConsumer), args.Error(1)
+	_ = "STUB: not implemented"
+	return *new(sarama.PartitionConsumer), nil
 }
 
 // HighWaterMarks mocks sarama.Consumer.HighWaterMarks
 func (m *MockSaramaConsumer) HighWaterMarks() map[string]map[int32]int64 {
-	args := m.Called()
-	return args.Get(0).(map[string]map[int32]int64)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // Close mocks sarama.Consumer.Close
-func (m *MockSaramaConsumer) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
+func (m *MockSaramaConsumer) Close() error { _ = "STUB: not implemented"; return nil }
 
 // Pause mocks sarama.Consumer.Pause
 func (m *MockSaramaConsumer) Pause(topicPartitions map[string][]int32) {
-	m.Called()
+	_ = "STUB: not implemented"
+
+	// Resume mocks sarama.Consumer.Resume
+	return
 }
 
-// Resume mocks sarama.Consumer.Resume
 func (m *MockSaramaConsumer) Resume(topicPartitions map[string][]int32) {
-	m.Called()
+	_ = "STUB: not implemented"
+
+	// PauseAll mocks sarama.Consumer.PauseAll
+	return
 }
 
-// PauseAll mocks sarama.Consumer.PauseAll
 func (m *MockSaramaConsumer) PauseAll() {
-	m.Called()
+	_ = "STUB: not implemented"
+
+	// ResumeAll mocks sarama.Consumer.ResumeAll
+	return
 }
 
-// ResumeAll mocks sarama.Consumer.ResumeAll
 func (m *MockSaramaConsumer) ResumeAll() {
-	m.Called()
+	_ = "STUB: not implemented"
+
+	// MockSaramaPartitionConsumer is a mock of sarama.PartitionConsumer. It is used in tests by multiple packages. It
+	// should never be used in the normal code.
+	return
 }
 
-// MockSaramaPartitionConsumer is a mock of sarama.PartitionConsumer. It is used in tests by multiple packages. It
-// should never be used in the normal code.
 type MockSaramaPartitionConsumer struct {
 	mock.Mock
 }
 
 // AsyncClose mocks sarama.PartitionConsumer.AsyncClose
 func (m *MockSaramaPartitionConsumer) AsyncClose() {
-	m.Called()
+	_ = "STUB: not implemented"
+
+	// Close mocks sarama.PartitionConsumer.Close
+	return
 }
 
-// Close mocks sarama.PartitionConsumer.Close
-func (m *MockSaramaPartitionConsumer) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
+func (m *MockSaramaPartitionConsumer) Close() error { _ = "STUB: not implemented"; return nil }
 
 // Messages mocks sarama.PartitionConsumer.Messages
 func (m *MockSaramaPartitionConsumer) Messages() <-chan *sarama.ConsumerMessage {
-	args := m.Called()
-	return args.Get(0).(<-chan *sarama.ConsumerMessage)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // Errors mocks sarama.PartitionConsumer.Errors
 func (m *MockSaramaPartitionConsumer) Errors() <-chan *sarama.ConsumerError {
-	args := m.Called()
-	return args.Get(0).(<-chan *sarama.ConsumerError)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // HighWaterMarkOffset mocks sarama.PartitionConsumer.HighWaterMarkOffset
 func (m *MockSaramaPartitionConsumer) HighWaterMarkOffset() int64 {
-	args := m.Called()
-	return args.Get(0).(int64)
+	_ = "STUB: not implemented"
+	return 0
 }
 
 // IsPaused mocks sarama.PartitionConsumer.IsPaused
-func (m *MockSaramaPartitionConsumer) IsPaused() bool {
-	args := m.Called()
-	return args.Get(0).(bool)
-}
+func (m *MockSaramaPartitionConsumer) IsPaused() bool { _ = "STUB: not implemented"; return false }
 
 // Pause mocks sarama.PartitionConsumer.Pause
 func (m *MockSaramaPartitionConsumer) Pause() {
-	m.Called()
+	_ = "STUB: not implemented"
+
+	// Resume mocks sarama.PartitionConsumer.Resume
+	return
 }
 
-// Resume mocks sarama.PartitionConsumer.Resume
-func (m *MockSaramaPartitionConsumer) Resume() {
-	m.Called()
-}
+func (m *MockSaramaPartitionConsumer) Resume() { _ = "STUB: not implemented"; return }
 
 func newSaramaZapLogger(logger *zap.Logger) sarama.StdLogger {
-	sl, _ := zap.NewStdLogAt(logger.With(zap.String("name", "sarama")), zapcore.DebugLevel)
-	return sl
+	_ = "STUB: not implemented"
+	return *new(sarama.StdLogger)
 }
 
 // InitSaramaLogging assigns a new logger to sarama.Logger, which
 // will send messages to given zap logger at debug level
-func InitSaramaLogging(logger *zap.Logger) {
-	sarama.Logger = newSaramaZapLogger(logger)
-}
+func InitSaramaLogging(logger *zap.Logger) { _ = "STUB: not implemented"; return }

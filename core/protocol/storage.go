@@ -9,8 +9,6 @@
 
 package protocol
 
-import "encoding/json"
-
 // StorageRequestConstant is used in StorageRequest to indicate the type of request. Numeric ordering is not important
 type StorageRequestConstant int
 
@@ -79,23 +77,21 @@ var storageRequestStrings = [...]string{
 }
 
 // String returns a string representation of a StorageRequestConstant for logging
-func (c StorageRequestConstant) String() string {
-	if (c >= 0) && (c < StorageRequestConstant(len(storageRequestStrings))) {
-		return storageRequestStrings[c]
-	}
-	return "UNKNOWN"
-}
+func (c StorageRequestConstant) String() string { _ = "STUB: not implemented"; return "" }
 
 // MarshalText implements the encoding.TextMarshaler interface. The status is the string representation of
 // StorageRequestConstant
 func (c StorageRequestConstant) MarshalText() ([]byte, error) {
-	return []byte(c.String()), nil
+	_ = "STUB: not implemented"
+	return nil, nil
+
+	// MarshalJSON implements the json.Marshaler interface. The status is the string representation of
+	// StorageRequestConstant
 }
 
-// MarshalJSON implements the json.Marshaler interface. The status is the string representation of
-// StorageRequestConstant
 func (c StorageRequestConstant) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.String())
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 // StorageRequest is sent over the StorageChannel that is stored in the application context. It is a query to either
@@ -170,14 +166,10 @@ type Lag struct {
 }
 
 // MarshalJSON should just treat lag as a nullable number, not a nested struct
-func (lag Lag) MarshalJSON() ([]byte, error) {
-	return json.Marshal(lag.Value)
-}
+func (lag Lag) MarshalJSON() ([]byte, error) { _ = "STUB: not implemented"; return nil, nil }
 
 // UnmarshalJSON reads lag from a JSON number
-func (lag *Lag) UnmarshalJSON(b []byte) error {
-	return json.Unmarshal(b, &lag.Value)
-}
+func (lag *Lag) UnmarshalJSON(b []byte) error { _ = "STUB: not implemented"; return nil }
 
 // ConsumerOffset represents a single offset stored. It is used as part of the response to a StorageFetchConsumer
 // request

@@ -20,12 +20,8 @@
 package evaluator
 
 import (
-	"errors"
-
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	"github.com/linkedin/Burrow/core/internal/helpers"
 	"github.com/linkedin/Burrow/core/protocol"
 )
 
@@ -57,53 +53,21 @@ type Coordinator struct {
 // getModuleForClass returns the correct module based on the passed className. As part of the Configure steps, if there
 // is any error, it will panic with an appropriate message describing the problem.
 func getModuleForClass(app *protocol.ApplicationContext, moduleName, className string) protocol.Module {
-	switch className {
-	case "caching":
-		return &CachingEvaluator{
-			App: app,
-			Log: app.Logger.With(
-				zap.String("type", "module"),
-				zap.String("coordinator", "evaluator"),
-				zap.String("class", className),
-				zap.String("name", moduleName),
-			),
-		}
-	default:
-		panic("Unknown evaluator className provided: " + className)
-	}
+	_ = "STUB: not implemented"
+	return *new(protocol.Module)
 }
 
 // Configure is called to create the configured evaluator module and call its Configure func to validate the
 // configuration and set it up. The coordinator will panic is more than one module is configured, and if no modules have
 // been configured, it will set up a default caching evaluator module. If there are any problems, it is expected that
 // this func will panic with a descriptive error message, as configuration failures are not recoverable errors.
-func (ec *Coordinator) Configure() {
-	ec.Log.Info("configuring")
+func (ec *Coordinator) Configure() { _ = "STUB: not implemented"; return }
 
-	ec.quitChannel = make(chan struct{})
-	ec.modules = make(map[string]protocol.Module)
+// Create a default module
 
-	modules := viper.GetStringMap("evaluator")
-	switch len(modules) {
-	case 0:
-		// Create a default module
-		viper.Set("evaluator.default.class-name", "caching")
-		modules = viper.GetStringMap("evaluator")
-	case 1:
-		// Have one module. Just continue
-		break
-	default:
-		panic("Only one evaluator module must be configured")
-	}
+// Have one module. Just continue
 
-	// Create all configured evaluator modules, add to list of evaluators
-	for name := range modules {
-		configRoot := "evaluator." + name
-		module := getModuleForClass(ec.App, name, viper.GetString(configRoot+".class-name"))
-		module.Configure(name, configRoot)
-		ec.modules[name] = module
-	}
-}
+// Create all configured evaluator modules, add to list of evaluators
 
 // Start calls the evaluator module's underlying Start func. If the module Start returns an error, this func stops
 // immediately and returns that error to the caller.
@@ -111,48 +75,21 @@ func (ec *Coordinator) Configure() {
 // We also start a request forwarder goroutine. This listens to the EvaluatorChannel that is provided in the application
 // context that all modules receive, and forwards those requests to the evaluator modules. At the present time, the
 // evaluator only supports one module, so this is a simple "accept and forward".
-func (ec *Coordinator) Start() error {
-	ec.Log.Info("starting")
+func (ec *Coordinator) Start() error { _ = "STUB: not implemented"; return nil }
 
-	// Start Evaluator modules
-	err := helpers.StartCoordinatorModules(ec.modules)
-	if err != nil {
-		return errors.New("Error starting evaluator module: " + err.Error())
-	}
+// Start Evaluator modules
 
-	// Start request forwarder
-	go func() {
-		// We only support 1 module right now, so only send to that module
-		var channel chan *protocol.EvaluatorRequest
-		for _, module := range ec.modules {
-			channel = module.(Module).GetCommunicationChannel()
-		}
+// Start request forwarder
 
-		for {
-			select {
-			case request := <-ec.App.EvaluatorChannel:
-				// Yes, this forwarder is silly. However, in the future we want to support multiple evaluator modules
-				// concurrently. However, that will require implementing a router that properly handles requests and
-				// makes sure that only 1 evaluator responds
-				channel <- request
-			case <-ec.quitChannel:
-				return
-			}
-		}
-	}()
+// We only support 1 module right now, so only send to that module
 
-	return nil
-}
+// Yes, this forwarder is silly. However, in the future we want to support multiple evaluator modules
+// concurrently. However, that will require implementing a router that properly handles requests and
+// makes sure that only 1 evaluator responds
 
 // Stop calls the configured evaluator module's underlying Stop func. It is expected that the module Stop will not
 // return until the module has been completely stopped. While an error can be returned, this func always returns no
 // error, as a failure during stopping is not a critical failure
-func (ec *Coordinator) Stop() error {
-	ec.Log.Info("stopping")
+func (ec *Coordinator) Stop() error { _ = "STUB: not implemented"; return nil }
 
-	close(ec.quitChannel)
-
-	// The individual storage modules can choose whether or not to implement a wait in the Stop routine
-	helpers.StopCoordinatorModules(ec.modules)
-	return nil
-}
+// The individual storage modules can choose whether or not to implement a wait in the Stop routine

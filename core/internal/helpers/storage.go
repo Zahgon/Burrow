@@ -10,19 +10,12 @@
 package helpers
 
 import (
-	"time"
-
 	"github.com/linkedin/Burrow/core/protocol"
 )
 
 // TimeoutSendStorageRequest is a helper func for sending a protocol.StorageRequest to a channel with a timeout,
 // specified in seconds. If the request is sent, return true. Otherwise, if the timeout is hit, return false.
 func TimeoutSendStorageRequest(storageChannel chan *protocol.StorageRequest, request *protocol.StorageRequest, maxTime int) bool {
-	timeout := time.After(time.Duration(maxTime) * time.Second)
-	select {
-	case storageChannel <- request:
-		return true
-	case <-timeout:
-		return false
-	}
+	_ = "STUB: not implemented"
+	return false
 }
